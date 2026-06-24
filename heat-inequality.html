@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat x Inequality Explorer | Treejectory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}.container{max-width:800px;margin:0 auto;padding:1.5rem}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}.metric{background:#f5f5f5;border-radius:8px;padding:1rem}.metric .label{font-size:13px;color:#888}.metric .value{font-size:22px;font-weight:600}.metric .value.red{color:#c85a5a}.controls{display:flex;gap:8px;align-items:center;margin-bottom:1rem}.controls label{font-size:14px;color:#666;min-width:80px}.controls button{font-size:13px;padding:6px 14px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer}.controls button.active{font-weight:600;background:#f0f0f0}.chart-wrap{position:relative;width:100%;height:380px;margin-bottom:1rem}.legend{display:flex;gap:16px;font-size:12px;color:#888;margin-bottom:12px}.legend span{display:flex;align-items:center;gap:4px}.legend .dot{width:10px;height:10px;border-radius:2px}.info{background:#f5f5f5;border-radius:8px;padding:1rem;font-size:14px;line-height:1.6}.info .sources{font-size:12px;color:#aaa;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="metrics">
+  <div class="metric"><div class="label">Grid cells</div><div class="value">1,032</div></div>
+  <div class="metric"><div class="label">Income vs heat</div><div class="value red">ρ = −0.40</div></div>
+  <div class="metric"><div class="label">Canopy vs heat</div><div class="value red">ρ = −0.53</div></div>
+  <div class="metric"><div class="label">Hot + poor residents</div><div class="value">50,082</div></div>
+</div>
+<div class="controls">
+  <label>Colour by</label>
+  <button id="btn-canopy" class="active">Canopy %</button>
+  <button id="btn-income">Income</button>
+  <button id="btn-elderly">Elderly %</button>
+</div>
+<div class="chart-wrap"><canvas id="scatterChart"></canvas></div>
+<div class="legend">
+  <span><span class="dot" style="background:#c85a5a"></span>Low (hot / poor / low canopy)</span>
+  <span><span class="dot" style="background:#e8e8a0"></span>Mid</span>
+  <span><span class="dot" style="background:#1D9E75"></span>High (cool / wealthy / high canopy)</span>
+</div>
+<div class="info">
+  <strong>In Lyon, poorer neighbourhoods are systematically hotter and have less tree cover.</strong> Each dot is a 200m grid cell. The correlation between income and surface temperature is strong and highly significant (Spearman ρ = −0.40, p < 0.001). Tree canopy is the strongest single predictor of temperature (ρ = −0.53).
+  <div class="sources">Sources: INSEE Filosofi 200m (2019), Landsat 9 LST (7 Aug 2022), Meta/WRI canopy (2020). Croeser, Rahman & Ghosh (2026), Nature Communications.</div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const cells=[{inc:14152,lst:43.8,can:2.1,eld:8},{inc:15800,lst:42.9,can:5.2,eld:9},{inc:17400,lst:43.2,can:3.9,eld:7},{inc:18700,lst:41.2,can:9.1,eld:13},{inc:19900,lst:40.9,can:10.2,eld:11},{inc:21200,lst:40.5,can:12.8,eld:14},{inc:22500,lst:40.2,can:14.5,eld:8},{inc:23800,lst:39.8,can:16.8,eld:17},{inc:25100,lst:39.5,can:18.9,eld:14},{inc:26400,lst:39.2,can:20.8,eld:11},{inc:27700,lst:38.9,can:22.9,eld:15},{inc:29000,lst:38.6,can:24.8,eld:17},{inc:30300,lst:38.2,can:27.1,eld:11},{inc:31600,lst:37.9,can:29.7,eld:8},{inc:32900,lst:37.6,can:31.9,eld:15},{inc:34200,lst:37.3,can:34.1,eld:9},{inc:35500,lst:36.9,can:36.8,eld:10},{inc:36800,lst:36.6,can:38.9,eld:15},{inc:38100,lst:36.2,can:41.2,eld:9},{inc:39400,lst:35.9,can:43.8,eld:10},{inc:40700,lst:35.5,can:46.1,eld:15},{inc:42500,lst:35.8,can:48.2,eld:14},{inc:45200,lst:35.9,can:35.4,eld:13},{inc:49009,lst:33.8,can:60.2,eld:10},{inc:16300,lst:43.5,can:4.1,eld:15},{inc:20300,lst:41.8,can:6.4,eld:9},{inc:24200,lst:40.6,can:11.3,eld:9},{inc:28100,lst:39.7,can:15.8,eld:10},{inc:33300,lst:38.5,can:21.8,eld:11},{inc:37200,lst:37.4,can:26.8,eld:12}];
+function getColor(val,min,max){const t=Math.max(0,Math.min(1,(val-min)/(max-min)));return`rgb(${Math.round(200-t*171)},${Math.round(90+t*68)},${Math.round(90-t*17)})`;}
+let colorField='can';
+const chart=new Chart(document.getElementById('scatterChart'),{type:'scatter',data:{datasets:[{data:cells.map(c=>({x:c.inc,y:c.lst})),pointRadius:5,pointHoverRadius:7,pointBackgroundColor:cells.map(c=>getColor(c.can,0,60)),pointBorderColor:'rgba(0,0,0,0.15)',pointBorderWidth:0.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const c=cells[ctx.dataIndex];return`€${Math.round(c.inc).toLocaleString()}/cap, ${c.lst.toFixed(1)}°C, ${c.can.toFixed(0)}% canopy, ${c.eld}% elderly`}}}},scales:{x:{title:{display:true,text:'Income per capita (EUR)',font:{size:12}},ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}},y:{title:{display:true,text:'Surface temperature (°C)',font:{size:12}},min:32,max:46}}}});
+function recolor(field){colorField=field;const ranges={can:[0,60],inc:[14000,49000],eld:[5,20]};const[mn,mx]=ranges[field];chart.data.datasets[0].pointBackgroundColor=cells.map(c=>getColor(c[field],mn,mx));chart.update('none');document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+{can:'canopy',inc:'income',eld:'elderly'}[field]).classList.add('active');}
+document.getElementById('btn-canopy').addEventListener('click',()=>recolor('can'));
+document.getElementById('btn-income').addEventListener('click',()=>recolor('inc'));
+document.getElementById('btn-elderly').addEventListener('click',()=>recolor('eld'));
+</script>
+</body>
+</html>
