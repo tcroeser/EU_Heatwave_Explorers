@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canopy Class Distribution | Treejectory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}.container{max-width:800px;margin:0 auto;padding:1.5rem}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}.metric{background:#f5f5f5;border-radius:8px;padding:1rem}.metric .label{font-size:13px;color:#888}.metric .value{font-size:22px;font-weight:600}.metric .value.green{color:#2D6A4F}.metric .value.red{color:#c85a5a}.chart-wrap{position:relative;width:100%;height:700px;margin-bottom:0.5rem}.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:12px;color:#888}.legend span{display:flex;align-items:center;gap:4px}.legend .dot{width:12px;height:12px;border-radius:2px}.sources{font-size:12px;color:#aaa;background:#f5f5f5;border-radius:8px;padding:1rem;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="metrics">
+  <div class="metric"><div class="label">Cities</div><div class="value">21</div></div>
+  <div class="metric"><div class="label">Buildings</div><div class="value">3.8M</div></div>
+  <div class="metric"><div class="label">Best</div><div class="value green">Berlin 80%</div></div>
+  <div class="metric"><div class="label">Worst</div><div class="value red">Sevilla 99.8%</div></div>
+</div>
+<div class="chart-wrap"><canvas id="stackedChart"></canvas></div>
+<div class="legend">
+  <span><span class="dot" style="background:#67001f"></span>0-10%</span>
+  <span><span class="dot" style="background:#d6604d"></span>10-20%</span>
+  <span><span class="dot" style="background:#f4a582"></span>20-30%</span>
+  <span><span class="dot" style="background:#92c5de"></span>30-40%</span>
+  <span><span class="dot" style="background:#0571b0"></span>40%+</span>
+  <span><span style="width:2px;height:12px;background:#000"></span>30% threshold</span>
+</div>
+<div class="sources">Each bar shows what percentage of a city's buildings have a given level of tree canopy within 60 metres. Everything left of 30% is the deficit. Croeser, Rahman & Ghosh (2026), Nature Communications.</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const cities=[
+{name:"Porto",c:"PT",pct:[72,18,9,1,0]},{name:"Thessaloniki",c:"GR",pct:[68,22,9,1,0]},
+{name:"Sevilla",c:"ES",pct:[70,20,10,0,0]},{name:"Athens",c:"GR",pct:[65,23,10,1,1]},
+{name:"Paris",c:"FR",pct:[60,28,11,1,0]},{name:"Madrid",c:"ES",pct:[58,28,13,1,0]},
+{name:"Lisbon",c:"PT",pct:[57,28,14,1,0]},{name:"Toulouse",c:"FR",pct:[58,29,11,1,1]},
+{name:"Naples",c:"IT",pct:[62,25,11,1,1]},{name:"Rome",c:"IT",pct:[58,26,14,1,1]},
+{name:"Bristol",c:"GB",pct:[52,30,16,1,1]},{name:"Marseille",c:"FR",pct:[55,30,12,2,1]},
+{name:"Barcelona",c:"ES",pct:[56,28,13,2,1]},{name:"Milan",c:"IT",pct:[54,29,13,2,2]},
+{name:"London",c:"GB",pct:[48,30,18,3,1]},{name:"Birmingham",c:"GB",pct:[44,32,19,3,2]},
+{name:"Lyon",c:"FR",pct:[50,33,10,4,3]},{name:"Munich",c:"DE",pct:[35,30,25,7,3]},
+{name:"Cologne",c:"DE",pct:[32,28,28,8,4]},{name:"Nice",c:"FR",pct:[38,28,22,8,4]},
+{name:"Berlin",c:"DE",pct:[28,25,25,13,9]},
+];
+cities.sort((a,b)=>(b.pct[0]+b.pct[1]+b.pct[2])-(a.pct[0]+a.pct[1]+a.pct[2]));
+const labels=cities.map(c=>c.name);
+const colors=['#67001f','#d6604d','#f4a582','#92c5de','#0571b0'];
+const classLabels=['0-10%','10-20%','20-30%','30-40%','40%+'];
+const datasets=classLabels.map((lbl,i)=>({label:lbl,data:cities.map(c=>c.pct[i]),backgroundColor:colors[i],borderWidth:0}));
+new Chart(document.getElementById('stackedChart'),{type:'bar',data:{labels,datasets},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.raw+'%'}}},scales:{x:{stacked:true,min:0,max:100,title:{display:true,text:'Percentage of buildings'},ticks:{callback:v=>v+'%'}},y:{stacked:true,ticks:{font:{size:11}}}}},plugins:[{id:'note',afterDraw(chart){const ctx=chart.ctx;ctx.save();ctx.font='11px Arial';ctx.fillStyle='rgba(0,0,0,0.4)';ctx.textAlign='center';const x=chart.scales.x;ctx.fillText('← below 30% threshold | above →',x.getPixelForValue(50),x.top-8);ctx.restore();}}]});
+</script>
+</body>
+</html>
