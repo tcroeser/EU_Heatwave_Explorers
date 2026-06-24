@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Surface Temperature Maps | Treejectory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}
+.container{max-width:860px;margin:0 auto;padding:1.5rem}
+h2{font-size:1.2rem;font-weight:600;margin-bottom:0.5rem}
+.subtitle{font-size:13px;color:#888;margin-bottom:1.5rem}
+.carousel{position:relative;background:#1a1a1a;border-radius:8px;overflow:hidden}
+.carousel img{width:100%;display:block;border-radius:8px}
+.carousel .nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.85);border:none;font-size:24px;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a1a1a}
+.carousel .nav:hover{background:#fff}
+.carousel .prev{left:12px}
+.carousel .next{right:12px}
+.carousel .counter{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,0.7);color:#fff;font-size:12px;padding:4px 10px;border-radius:4px}
+.city-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
+.city-bar button{font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer}
+.city-bar button.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.info{margin-top:12px;font-size:13px;color:#666}
+.info .city-name{font-weight:600;font-size:15px;color:#1a1a1a}
+.info .stats{display:flex;gap:16px;margin-top:4px;font-size:12px;color:#888}
+.sources{font-size:11px;color:#aaa;margin-top:1rem;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Land surface temperature during heatwave events</h2>
+<p class="subtitle">21 European cities — Landsat 9, 30m resolution. Dark = cool, bright = hot.</p>
+
+<div class="carousel" id="carousel">
+  <img id="carousel-img" src="" alt="LST map">
+  <button class="nav prev" onclick="move(-1)">&#8249;</button>
+  <button class="nav next" onclick="move(1)">&#8250;</button>
+  <div class="counter" id="counter"></div>
+</div>
+
+<div class="city-bar" id="city-bar"></div>
+
+<div class="info">
+  <div class="city-name" id="info-name"></div>
+  <div class="stats" id="info-stats"></div>
+</div>
+
+<div class="sources">
+  Surface temperature from Landsat 9 Collection 2 Level 2 (ST_B10), converted to °C. Heatwave scenes selected per city — most from summer 2024; UK cities from May 2026. Note: Landsat has a ~7-day processing lag, so these are from a past heatwave event, not the current one. Canopy: Meta/WRI 1m (2020). Unpublished analysis by Dr Thami Croeser, June 2026.
+</div>
+</div>
+
+<script>
+const cities = [
+  // Round 1: hottest per country (FR, ES, IT, DE)
+  {id:"marseille",name:"Marseille",country:"France",date:"2024-08-05",mean:43.8,peak:52,below:97.2},
+  {id:"sevilla",name:"Sevilla",country:"Spain",date:"2024-07-23",mean:48,peak:55,below:99.8},
+  {id:"rome",name:"Rome",country:"Italy",date:"2024-07-17",mean:49.1,peak:56,below:97.6},
+  {id:"munich",name:"Munich",country:"Germany",date:"2024-07-31",mean:36,peak:43,below:90.4},
+  // Round 2: second hottest
+  {id:"toulouse",name:"Toulouse",country:"France",date:"2024-08-10",mean:44.1,peak:50,below:98.3},
+  {id:"madrid",name:"Madrid",country:"Spain",date:"2024-07-23",mean:46,peak:54,below:98.7},
+  {id:"naples",name:"Naples",country:"Italy",date:"2024-08-11",mean:47.7,peak:54,below:97.9},
+  {id:"berlin",name:"Berlin",country:"Germany",date:"2024-09-01",mean:35,peak:42,below:80.0},
+  // Round 3: third
+  {id:"nice",name:"Nice",country:"France",date:"2024-07-29",mean:42.4,peak:49,below:88.2},
+  {id:"barcelona",name:"Barcelona",country:"Spain",date:"2024-07-27",mean:42,peak:48,below:97.1},
+  {id:"milan",name:"Milan",country:"Italy",date:"2024-07-15",mean:45.9,peak:52,below:96.2},
+  {id:"cologne",name:"Cologne",country:"Germany",date:"2024-08-28",mean:34,peak:40,below:88.5},
+  // Round 4+: remaining FR
+  {id:"lyon",name:"Lyon",country:"France",date:"2022-08-07",mean:40.8,peak:49,below:93.9},
+  {id:"paris",name:"Paris",country:"France",date:"2024-08-26",mean:29.7,peak:38,below:98.5},
+  // Portugal, Greece, UK
+  {id:"lisbon",name:"Lisbon",country:"Portugal",date:"2024-09-14",mean:42,peak:50,below:98.7},
+  {id:"athens",name:"Athens",country:"Greece",date:"2024-08-03",mean:46,peak:53,below:99.1},
+  {id:"london",name:"London",country:"UK",date:"2026-05-26",mean:36,peak:44,below:96.0},
+  {id:"porto",name:"Porto",country:"Portugal",date:"2024-09-14",mean:38,peak:45,below:99.3},
+  {id:"thessaloniki",name:"Thessaloniki",country:"Greece",date:"2024-07-16",mean:44,peak:51,below:99.1},
+  {id:"bristol",name:"Bristol",country:"UK",date:"2026-05-24",mean:36.7,peak:42,below:97.5},
+  {id:"birmingham",name:"Birmingham",country:"UK",date:"2026-05-24",mean:34.8,peak:41,below:95.1},
+];
+
+// Images will be loaded from the city folders — for now use placeholder paths
+// In production these would be hosted alongside or as base64
+// For GitHub Pages, we'll reference relative paths
+const imgBase = "";  // Same directory
+
+let current = 0;
+const img = document.getElementById("carousel-img");
+const counter = document.getElementById("counter");
+const infoName = document.getElementById("info-name");
+const infoStats = document.getElementById("info-stats");
+const bar = document.getElementById("city-bar");
+
+// Build city buttons
+cities.forEach((c, i) => {
+  const btn = document.createElement("button");
+  btn.textContent = c.name;
+  btn.onclick = () => show(i);
+  btn.id = "btn-" + i;
+  bar.appendChild(btn);
+});
+
+function show(idx) {
+  current = idx;
+  const c = cities[idx];
+  // Use a data URI placeholder with city info since actual images aren't on GitHub Pages
+  // In production, replace with actual image URLs
+  img.src = "lst-images/" + c.id + "_lst.png";
+  img.alt = c.name + " surface temperature map";
+  img.onerror = function() {
+    // Fallback: show a styled placeholder
+    this.style.display = "none";
+    document.getElementById("carousel").style.minHeight = "200px";
+    document.getElementById("carousel").style.display = "flex";
+    document.getElementById("carousel").style.alignItems = "center";
+    document.getElementById("carousel").style.justifyContent = "center";
+    document.getElementById("carousel").innerHTML = '<div style="color:#666;text-align:center;padding:2rem;width:100%"><div style="font-size:48px;margin-bottom:1rem">🌡️</div><div style="font-size:18px;font-weight:600;color:#fff">' + c.name + '</div><div style="font-size:14px;color:#aaa;margin-top:8px">Mean: ' + c.mean + '°C | Peak: ' + c.peak + '°C</div><div style="font-size:12px;color:#666;margin-top:4px">Captured: ' + c.date + '</div><div style="font-size:11px;color:#555;margin-top:12px">' + c.below + '% of buildings below 30% canopy threshold</div></div>';
+    // Re-add nav buttons
+    const carousel = document.getElementById("carousel");
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "nav prev"; prevBtn.innerHTML = "&#8249;"; prevBtn.onclick = () => move(-1);
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "nav next"; nextBtn.innerHTML = "&#8250;"; nextBtn.onclick = () => move(1);
+    carousel.appendChild(prevBtn); carousel.appendChild(nextBtn);
+  };
+  counter.textContent = (idx + 1) + " / " + cities.length;
+  infoName.textContent = c.name + ", " + c.country;
+  infoStats.innerHTML = "Captured: " + c.date + " (past event) &nbsp;|&nbsp; Mean surface temp: " + c.mean + "°C &nbsp;|&nbsp; " + c.below + "% of buildings below 30% canopy";
+  document.querySelectorAll(".city-bar button").forEach((b, i) => b.classList.toggle("active", i === idx));
+}
+
+function move(dir) {
+  show((current + dir + cities.length) % cities.length);
+}
+
+show(0);
+
+// Keyboard nav
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") move(-1);
+  if (e.key === "ArrowRight") move(1);
+});
+</script>
+</body>
+</html>

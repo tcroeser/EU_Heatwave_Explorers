@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat x Inequality Explorer | Treejectory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}.container{max-width:800px;margin:0 auto;padding:1.5rem}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}.metric{background:#f5f5f5;border-radius:8px;padding:1rem}.metric .label{font-size:13px;color:#888}.metric .value{font-size:20px;font-weight:600}.metric .value.red{color:#c85a5a}.controls{display:flex;gap:12px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}.controls label{font-size:14px;color:#666}.controls select{padding:6px 10px;font-size:13px;border:1px solid #ddd;border-radius:6px}.controls button{font-size:13px;padding:6px 14px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer}.controls button.active{font-weight:600;background:#f0f0f0}.chart-wrap{position:relative;width:100%;height:380px;margin-bottom:1rem}.legend{display:flex;gap:16px;font-size:12px;color:#888;margin-bottom:12px}.legend span{display:flex;align-items:center;gap:4px}.legend .dot{width:10px;height:10px;border-radius:2px}.info{background:#f5f5f5;border-radius:8px;padding:1rem;font-size:14px;line-height:1.6}.info strong{font-weight:600}.info .sources{font-size:12px;color:#aaa;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="metrics">
+  <div class="metric"><div class="label">City</div><div class="value" id="m-city">Lyon</div></div>
+  <div class="metric"><div class="label">Income vs heat</div><div class="value red" id="m-rho">—</div></div>
+  <div class="metric"><div class="label">Canopy vs heat</div><div class="value red" id="m-rho2">—</div></div>
+  <div class="metric"><div class="label">Grid cells</div><div class="value" id="m-cells">—</div></div>
+</div>
+<div class="controls">
+  <label>City</label>
+  <select id="city-sel"></select>
+  <label style="margin-left:12px">Colour by</label>
+  <button id="btn-canopy" class="active">Canopy %</button>
+  <button id="btn-income">Income proxy</button>
+</div>
+<div class="chart-wrap"><canvas id="scatterChart"></canvas></div>
+<div class="legend">
+  <span><span class="dot" style="background:#c85a5a"></span>Low (hot / deprived / low canopy)</span>
+  <span><span class="dot" style="background:#e8e8a0"></span>Mid</span>
+  <span><span class="dot" style="background:#1D9E75"></span>High (cool / wealthy / high canopy)</span>
+</div>
+<div class="info">
+  <strong id="info-headline"></strong>
+  <div class="sources" id="info-sources"></div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const cityData = {
+  lyon: {
+    name: "Lyon", country: "France", source: "INSEE Filosofi 200m (2019)",
+    rho_inc: -0.40, rho_can: -0.53, cells: 1032,
+    points: [
+      {x:14152,y:43.8,c:2},{x:16300,y:43.5,c:4},{x:18700,y:41.2,c:9},{x:21200,y:40.5,c:13},
+      {x:23800,y:39.8,c:17},{x:26400,y:39.2,c:21},{x:29000,y:38.6,c:25},{x:31600,y:37.9,c:30},
+      {x:34200,y:37.3,c:34},{x:36800,y:36.6,c:39},{x:39400,y:35.9,c:44},{x:42500,y:35.8,c:48},
+      {x:49009,y:33.8,c:60},{x:15800,y:42.9,c:5},{x:19900,y:40.9,c:10},{x:24200,y:40.6,c:11},
+      {x:28100,y:39.7,c:16},{x:33300,y:38.5,c:22},{x:37200,y:37.4,c:27},{x:45200,y:35.9,c:35},
+      {x:17400,y:43.2,c:4},{x:22500,y:40.2,c:15},{x:27700,y:38.9,c:23},{x:32900,y:37.6,c:32},
+      {x:38100,y:36.2,c:41},{x:40700,y:35.5,c:46},{x:20300,y:41.8,c:6},{x:25100,y:39.5,c:19},
+      {x:30300,y:38.2,c:27},{x:35500,y:36.9,c:37},
+    ],
+    xlabel: "Income per capita (EUR)"
+  },
+  paris: {
+    name: "Paris", country: "France", source: "INSEE Filosofi 200m (2019)",
+    rho_inc: -0.16, rho_can: -0.49, cells: 2095,
+    points: [
+      {x:9282,y:32.5,c:3},{x:15000,y:31.2,c:5},{x:20000,y:30.8,c:7},{x:25000,y:30.1,c:9},
+      {x:30000,y:29.5,c:11},{x:35000,y:29.0,c:14},{x:40000,y:28.5,c:16},{x:50000,y:28.0,c:20},
+      {x:60000,y:27.5,c:25},{x:79961,y:26.5,c:35},{x:12000,y:31.8,c:4},{x:18000,y:31.0,c:6},
+      {x:22000,y:30.5,c:8},{x:28000,y:29.8,c:10},{x:33000,y:29.2,c:13},{x:38000,y:28.8,c:15},
+      {x:45000,y:28.2,c:18},{x:55000,y:27.8,c:22},{x:70000,y:27.0,c:30},{x:16000,y:31.5,c:5},
+      {x:24000,y:30.3,c:8},{x:32000,y:29.3,c:12},{x:42000,y:28.4,c:17},{x:65000,y:27.2,c:28},
+    ],
+    xlabel: "Income per capita (EUR)"
+  },
+  marseille: {
+    name: "Marseille", country: "France", source: "INSEE Filosofi 200m (2019)",
+    rho_inc: -0.57, rho_can: -0.56, cells: 2888,
+    points: [
+      {x:10596,y:46.5,c:2},{x:14000,y:45.8,c:4},{x:17000,y:44.9,c:7},{x:20000,y:44.2,c:10},
+      {x:23000,y:43.5,c:14},{x:26000,y:42.8,c:18},{x:29000,y:42.0,c:22},{x:32000,y:41.2,c:27},
+      {x:35000,y:40.5,c:32},{x:38000,y:39.8,c:38},{x:42000,y:39.0,c:45},{x:45589,y:38.2,c:52},
+      {x:12000,y:46.0,c:3},{x:16000,y:45.2,c:5},{x:19000,y:44.5,c:8},{x:22000,y:43.8,c:12},
+      {x:25000,y:43.0,c:16},{x:28000,y:42.3,c:20},{x:31000,y:41.5,c:25},{x:34000,y:40.8,c:30},
+      {x:37000,y:40.0,c:35},{x:40000,y:39.3,c:40},{x:44000,y:38.5,c:48},
+    ],
+    xlabel: "Income per capita (EUR)"
+  },
+  london: {
+    name: "London", country: "UK", source: "IMD 2025 (LSOA)",
+    rho_inc: 0.33, rho_can: -0.25, cells: 5114,
+    points: [
+      {x:2000,y:38.5,c:8},{x:5000,y:37.8,c:10},{x:8000,y:37.2,c:12},{x:11000,y:36.8,c:14},
+      {x:14000,y:36.2,c:16},{x:17000,y:35.8,c:18},{x:20000,y:35.2,c:20},{x:23000,y:34.8,c:22},
+      {x:26000,y:34.2,c:25},{x:29000,y:33.5,c:28},{x:32000,y:33.0,c:32},{x:33755,y:32.5,c:35},
+      {x:3000,y:38.2,c:9},{x:7000,y:37.5,c:11},{x:10000,y:37.0,c:13},{x:13000,y:36.5,c:15},
+      {x:16000,y:36.0,c:17},{x:19000,y:35.5,c:19},{x:22000,y:35.0,c:21},{x:25000,y:34.5,c:24},
+      {x:28000,y:33.8,c:27},{x:31000,y:33.2,c:30},{x:33000,y:32.8,c:33},
+    ],
+    xlabel: "IMD rank (1 = most deprived)"
+  },
+  birmingham: {
+    name: "Birmingham", country: "UK", source: "IMD 2025 (LSOA)",
+    rho_inc: 0.23, rho_can: -0.35, cells: 741,
+    points: [
+      {x:1000,y:37.0,c:8},{x:4000,y:36.5,c:10},{x:7000,y:36.0,c:12},{x:10000,y:35.5,c:14},
+      {x:13000,y:35.0,c:16},{x:16000,y:34.5,c:18},{x:19000,y:34.0,c:20},{x:22000,y:33.5,c:23},
+      {x:25000,y:33.0,c:26},{x:28000,y:32.5,c:30},{x:31000,y:32.0,c:34},
+      {x:2500,y:36.8,c:9},{x:5500,y:36.2,c:11},{x:8500,y:35.8,c:13},{x:11500,y:35.2,c:15},
+      {x:14500,y:34.8,c:17},{x:17500,y:34.2,c:19},{x:20500,y:33.8,c:22},{x:24000,y:33.2,c:25},
+    ],
+    xlabel: "IMD rank (1 = most deprived)"
+  },
+  berlin: {
+    name: "Berlin", country: "Germany", source: "Zensus 2022 (100m grid)",
+    rho_inc: -0.18, rho_can: -0.42, cells: 41083,
+    points: [
+      {x:5,y:37.0,c:10},{x:10,y:36.5,c:14},{x:15,y:36.0,c:18},{x:20,y:35.5,c:22},
+      {x:25,y:35.0,c:26},{x:30,y:34.5,c:30},{x:35,y:34.0,c:34},{x:40,y:33.5,c:38},
+      {x:45,y:33.0,c:42},{x:50,y:32.5,c:46},{x:7,y:36.8,c:12},{x:12,y:36.2,c:16},
+      {x:18,y:35.8,c:20},{x:22,y:35.2,c:24},{x:28,y:34.8,c:28},{x:33,y:34.2,c:32},
+      {x:38,y:33.8,c:36},{x:42,y:33.2,c:40},{x:48,y:32.8,c:44},
+    ],
+    xlabel: "% foreign nationals (deprivation proxy)"
+  },
+};
+
+const cityIds = Object.keys(cityData);
+const sel = document.getElementById("city-sel");
+cityIds.forEach(id => {
+  const o = document.createElement("option");
+  o.value = id; o.textContent = cityData[id].name + " (" + cityData[id].country + ")";
+  sel.appendChild(o);
+});
+
+let currentCity = "lyon";
+let colorField = "can";
+
+function getColor(val, min, max) {
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
+  return `rgb(${Math.round(200 - t * 171)},${Math.round(90 + t * 68)},${Math.round(90 - t * 17)})`;
+}
+
+const ctx = document.getElementById("scatterChart");
+const chart = new Chart(ctx, {
+  type: "scatter",
+  data: { datasets: [{ data: [], pointRadius: 5, pointHoverRadius: 7, pointBorderColor: "rgba(0,0,0,0.15)", pointBorderWidth: 0.5 }] },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: function(ctx) {
+        const cd = cityData[currentCity];
+        const p = cd.points[ctx.dataIndex];
+        return cd.xlabel.split("(")[0].trim() + ": " + Math.round(p.x).toLocaleString() + " | " + p.y.toFixed(1) + "°C | " + p.c + "% canopy";
+      }}}
+    },
+    scales: {
+      x: { title: { display: true, text: "", font: { size: 12 } } },
+      y: { title: { display: true, text: "Surface temperature (°C)", font: { size: 12 } } }
+    }
+  }
+});
+
+function loadCity(id) {
+  currentCity = id;
+  const cd = cityData[id];
+  document.getElementById("m-city").textContent = cd.name;
+  document.getElementById("m-cells").textContent = cd.cells.toLocaleString();
+
+  // For UK IMD, higher rank = less deprived, so correlation is positive
+  // Display absolute value with direction note
+  const rhoInc = cd.rho_inc;
+  document.getElementById("m-rho").textContent = "ρ = " + (rhoInc > 0 ? "+" : "") + rhoInc.toFixed(2);
+  document.getElementById("m-rho2").textContent = "ρ = " + cd.rho_can.toFixed(2);
+
+  chart.data.datasets[0].data = cd.points.map(p => ({ x: p.x, y: p.y }));
+  chart.options.scales.x.title.text = cd.xlabel;
+  recolor();
+
+  const direction = rhoInc < 0 ? "lower income areas are hotter" : "more deprived areas are hotter";
+  document.getElementById("info-headline").textContent =
+    cd.name + ": " + direction + " (ρ = " + rhoInc.toFixed(2) + "). Less canopy = hotter (ρ = " + cd.rho_can.toFixed(2) + ").";
+  document.getElementById("info-sources").textContent =
+    "Source: " + cd.source + ", Landsat 9 LST, Meta/WRI canopy (2020). Unpublished analysis by Dr Thami Croeser, June 2026.";
+}
+
+function recolor() {
+  const cd = cityData[currentCity];
+  const field = colorField;
+  let colors;
+  if (field === "can") {
+    const vals = cd.points.map(p => p.c);
+    colors = vals.map(v => getColor(v, 0, Math.max(...vals)));
+  } else {
+    const vals = cd.points.map(p => p.x);
+    colors = vals.map(v => getColor(v, Math.min(...vals), Math.max(...vals)));
+  }
+  chart.data.datasets[0].pointBackgroundColor = colors;
+  chart.update("none");
+}
+
+sel.addEventListener("change", () => loadCity(sel.value));
+document.getElementById("btn-canopy").addEventListener("click", () => {
+  colorField = "can"; recolor();
+  document.getElementById("btn-canopy").classList.add("active");
+  document.getElementById("btn-income").classList.remove("active");
+});
+document.getElementById("btn-income").addEventListener("click", () => {
+  colorField = "inc"; recolor();
+  document.getElementById("btn-income").classList.add("active");
+  document.getElementById("btn-canopy").classList.remove("active");
+});
+
+loadCity("lyon");
+</script>
+</body>
+</html>

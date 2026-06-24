@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cool Spots Explorer | Treejectory</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}.container{max-width:1000px;margin:0 auto;padding:1rem}.controls{display:flex;gap:12px;align-items:center;margin-bottom:1rem}.controls label{font-size:14px;color:#666}.controls select{padding:6px 10px;font-size:13px;border:1px solid #ddd;border-radius:6px}.controls .summary{font-size:13px;color:#888}.split{display:flex;gap:0;border:1px solid #eee;border-radius:8px;overflow:hidden;height:500px}.split #map{flex:1}.split #street-panel{flex:1;display:flex;flex-direction:column;border-left:1px solid #eee}.spot-info{padding:10px 14px;background:#f5f5f5;font-size:13px;border-bottom:1px solid #eee}.spot-info .highlight{color:#2D6A4F;font-weight:600}#street-frame{flex:1;border:none;background:#f9f9f9}.spot-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.spot-btns button{font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer}.spot-btns button:hover{background:#f0f0f0}.sources{font-size:12px;color:#aaa;background:#f5f5f5;border-radius:8px;padding:1rem;margin-top:1rem;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="controls">
+  <label>City</label>
+  <select id="city-sel">
+    <option value="lyon">Lyon</option>
+    <option value="paris">Paris</option>
+    <option value="marseille">Marseille</option>
+    <option value="toulouse">Toulouse</option>
+    <option value="nice">Nice</option>
+  </select>
+  <span class="summary" id="city-summary"></span>
+</div>
+<div class="split">
+  <div id="map"></div>
+  <div id="street-panel">
+    <div class="spot-info" id="spot-info">Click a marker to see the location</div>
+    <iframe id="street-frame" src="about:blank" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+</div>
+<div class="spot-btns" id="spot-cards"></div>
+<div class="sources">Cool spots are dense urban areas (≥20 dw/ha, >50m from water) with high canopy and low surface temperature. Temperature gap = degrees cooler than the city's urban mean. Street imagery via Google Maps. Map via OpenStreetMap/CARTO. Unpublished analysis by Dr Thami Croeser, June 2026.</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const spots={
+lyon:{residential:[
+{lat:45.76959,lon:4.81057,can:38.8,lst:37.9,gap:3.0,dw:44},
+{lat:45.75916,lon:4.78707,can:38.4,lst:38.1,gap:2.7,dw:26},
+{lat:45.78596,lon:4.80081,can:37.5,lst:38.3,gap:2.6,dw:39},
+{lat:45.78064,lon:4.79549,can:44.5,lst:39.5,gap:1.4,dw:28},
+{lat:45.75371,lon:4.78947,can:34.7,lst:38.1,gap:2.8,dw:45},
+{lat:45.75736,lon:4.78701,can:36.7,lst:38.6,gap:2.3,dw:52},
+{lat:45.78068,lon:4.79291,can:34.4,lst:38.4,gap:2.5,dw:65},
+{lat:45.75367,lon:4.79204,can:36.1,lst:38.5,gap:2.4,dw:45},
+{lat:45.79991,lon:4.8296,can:31.7,lst:37.6,gap:3.2,dw:48},
+{lat:45.75208,lon:4.77912,can:38.8,lst:38.9,gap:2.0,dw:31}]},
+paris:{residential:[
+{lat:48.85125,lon:2.26002,can:37.6,lst:26.4,gap:3.9,dw:68},
+{lat:48.87711,lon:2.37964,can:40.6,lst:28.6,gap:1.7,dw:96},
+{lat:48.88939,lon:2.32221,can:16.6,lst:22.2,gap:8.1,dw:346},
+{lat:48.85666,lon:2.26267,can:34.1,lst:25.9,gap:4.3,dw:40},
+{lat:48.87187,lon:2.40969,can:31.4,lst:25.8,gap:4.5,dw:74},
+{lat:48.85127,lon:2.26274,can:34.7,lst:27.4,gap:2.9,dw:46},
+{lat:48.86571,lon:2.27072,can:22.1,lst:23.1,gap:7.2,dw:86},
+{lat:48.888,lon:2.3986,can:37.2,lst:29.1,gap:1.2,dw:30},
+{lat:48.84945,lon:2.26004,can:18.9,lst:23.1,gap:7.2,dw:129},
+{lat:48.85487,lon:2.26269,can:33.5,lst:28.0,gap:2.2,dw:44}]},
+marseille:{residential:[
+{lat:43.30102,lon:5.43542,can:39.1,lst:40.1,gap:4.0,dw:48},
+{lat:43.24981,lon:5.39139,can:31.9,lst:40.0,gap:4.1,dw:26},
+{lat:43.24087,lon:5.38856,can:30.0,lst:40.2,gap:3.9,dw:36},
+{lat:43.29029,lon:5.51135,can:30.3,lst:40.8,gap:3.3,dw:30},
+{lat:43.30282,lon:5.43549,can:29.5,lst:40.9,gap:3.2,dw:45},
+{lat:43.25089,lon:5.42345,can:20.6,lst:40.3,gap:3.8,dw:128},
+{lat:43.29608,lon:5.49435,can:36.0,lst:42.9,gap:1.2,dw:21},
+{lat:43.25264,lon:5.42599,can:23.0,lst:40.4,gap:3.7,dw:92},
+{lat:43.2528,lon:5.41861,can:30.2,lst:41.4,gap:2.7,dw:22},
+{lat:43.29208,lon:5.51143,can:28.5,lst:41.2,gap:2.9,dw:24}]},
+toulouse:{residential:[
+{lat:43.58178,lon:1.44163,can:24.0,lst:41.9,gap:2.3,dw:108},
+{lat:43.57306,lon:1.46167,can:29.5,lst:42.2,gap:1.9,dw:22},
+{lat:43.60358,lon:1.4559,can:26.1,lst:42.0,gap:2.2,dw:38},
+{lat:43.61042,lon:1.43094,can:24.2,lst:41.9,gap:2.3,dw:50},
+{lat:43.61046,lon:1.43342,can:24.2,lst:41.6,gap:2.6,dw:20},
+{lat:43.58068,lon:1.49118,can:21.3,lst:41.6,gap:2.6,dw:64},
+{lat:43.60682,lon:1.43104,can:22.1,lst:42.4,gap:1.8,dw:101},
+{lat:43.57701,lon:1.48632,can:24.0,lst:41.6,gap:2.5,dw:21},
+{lat:43.60499,lon:1.42861,can:16.6,lst:41.5,gap:2.6,dw:136},
+{lat:43.60862,lon:1.43099,can:20.3,lst:42.4,gap:1.8,dw:114}]},
+nice:{residential:[
+{lat:43.69264,lon:7.22704,can:48.6,lst:39.7,gap:3.6,dw:66},
+{lat:43.72524,lon:7.26921,can:37.1,lst:39.6,gap:3.6,dw:44},
+{lat:43.68763,lon:7.21673,can:42.9,lst:40.7,gap:2.6,dw:25},
+{lat:43.68696,lon:7.23407,can:32.1,lst:40.0,gap:3.3,dw:74},
+{lat:43.71401,lon:7.23358,can:31.7,lst:39.7,gap:3.5,dw:20},
+{lat:43.6959,lon:7.28192,can:35.8,lst:40.9,gap:2.3,dw:33},
+{lat:43.7143,lon:7.22615,can:30.1,lst:39.8,gap:3.5,dw:21},
+{lat:43.6941,lon:7.28179,can:29.3,lst:39.9,gap:3.4,dw:36},
+{lat:43.72893,lon:7.267,can:30.8,lst:40.6,gap:2.7,dw:64},
+{lat:43.69736,lon:7.24477,can:31.9,lst:40.6,gap:2.7,dw:39}]}
+};
+const centres={lyon:[45.764,4.835],paris:[48.857,2.347],marseille:[43.297,5.381],toulouse:[43.605,1.444],nice:[43.710,7.262]};
+const map=L.map('map',{zoomControl:false}).setView([45.764,4.835],14);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'OSM/CARTO',maxZoom:18}).addTo(map);
+let markers=[];
+function loadCity(city){markers.forEach(m=>map.removeLayer(m));markers=[];const cs=spots[city].residential;map.setView(centres[city],13);
+cs.forEach((s,i)=>{const m=L.circleMarker([s.lat,s.lon],{radius:10,fillColor:'#2D6A4F',color:'#fff',weight:2,fillOpacity:0.85}).addTo(map);m.bindTooltip('#'+(i+1)+': -'+s.gap+'°C',{permanent:true,direction:'top',offset:[0,-8]});m.on('click',()=>selectSpot(city,i));markers.push(m);});
+document.getElementById('city-summary').textContent=cs.length+' cool dense neighbourhoods';
+document.getElementById('spot-cards').innerHTML=cs.map((s,i)=>'<button onclick="selectSpot(\''+city+'\','+i+')">#'+(i+1)+' -'+s.gap+'°C '+s.can+'%</button>').join('');
+document.getElementById('spot-info').innerHTML='Click a marker to explore';document.getElementById('street-frame').src='about:blank';}
+function selectSpot(city,idx){const s=spots[city].residential[idx];markers.forEach((m,i)=>m.setStyle({fillColor:i===idx?'#E63946':'#2D6A4F',radius:i===idx?14:10}));map.setView([s.lat,s.lon],16);
+document.getElementById('spot-info').innerHTML='<strong>#'+(idx+1)+'</strong> — '+s.can+'% canopy, '+s.lst+'°C, <span class="highlight">-'+s.gap+'°C cooler</span>, '+s.dw+' dw/ha';
+document.getElementById('street-frame').src='https://www.google.com/maps/embed/v1/streetview?key=AIzaSyDnIQouT9zmxgk0PjjRtzPZuWkHjy47xzM&location='+s.lat+','+s.lon+'&heading=0&pitch=0&fov=90';}
+window.selectSpot=selectSpot;
+document.getElementById('city-sel').addEventListener('change',function(){loadCity(this.value);});
+loadCity('lyon');setTimeout(()=>map.invalidateSize(),200);
+</script>
+</body>
+</html>
