@@ -258,9 +258,7 @@ function loadCity(city){
     '<button onclick="selectSpot('+i+')">'+m.sign+s.gap+'°C</button>'
   ).join('');
 
-  let bestIdx=0, bestVal=0;
-  spots.forEach((s,i)=>{if(s.gap>bestVal){bestVal=s.gap;bestIdx=i;}});
-  setTimeout(()=>selectSpot(bestIdx),500);
+  setTimeout(()=>selectSpot(0),500);
 }
 
 function selectSpot(idx){
