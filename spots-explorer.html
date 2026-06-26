@@ -130,6 +130,8 @@ Promise.all([
   Object.keys(hot).forEach(c=>{if(hot[c].spots) hot[c].spots=hot[c].spots.filter(s=>s.gap<=10);});
   coolData=cool;
   hotData=hot;
+  coolDefault={city:'munich',lat:48.09330,lon:11.60343};
+  hotDefault={city:'munich',lat:48.10324,lon:11.53179};
   buildCitySelector();
   setMode('cool');
 });
@@ -159,7 +161,12 @@ function setMode(mode){
   buildCitySelector();
   const data=mode==='cool'?coolData:hotData;
   const sel=document.getElementById('city-sel');
-  if(currentCity && data[currentCity] && data[currentCity].spots.length>0){
+  const def=mode==='cool'?coolDefault:hotDefault;
+  if(!currentCity){
+    currentCity=def.city;
+    sel.value=def.city;
+    loadCity(def.city,def);
+  } else if(data[currentCity] && data[currentCity].spots.length>0){
     sel.value=currentCity;
     loadCity(currentCity);
   } else {
@@ -213,7 +220,7 @@ function rebuildMarkers(){
   });
 }
 
-function loadCity(city){
+function loadCity(city,defaultSpot){
   currentCity=city;
   selectedIdx=-1;
   markers.forEach(m=>m.remove());
@@ -258,7 +265,15 @@ function loadCity(city){
     '<button onclick="selectSpot('+i+')">'+m.sign+s.gap+'°C</button>'
   ).join('');
 
-  setTimeout(()=>selectSpot(0),500);
+  let startIdx=0;
+  if(defaultSpot){
+    let bestDist=Infinity;
+    spots.forEach((s,i)=>{
+      const d=Math.abs(s.lat-defaultSpot.lat)+Math.abs(s.lon-defaultSpot.lon);
+      if(d<bestDist){bestDist=d;startIdx=i;}
+    });
+  }
+  setTimeout(()=>selectSpot(startIdx),500);
 }
 
 function selectSpot(idx){
