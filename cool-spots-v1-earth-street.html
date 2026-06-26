@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cool Spots Explorer v1 — Satellite + Street View</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}
+.container{max-width:1000px;margin:0 auto;padding:1rem}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:0.3rem}
+.subtitle{font-size:13px;color:#888;margin-bottom:0.8rem}
+.controls{display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.controls select{padding:8px 12px;font-size:14px;font-weight:600;border:2px solid #E76F00;border-radius:6px;background:#FFF7ED;color:#1a1a1a}
+.controls .summary{font-size:13px;color:#888}
+.controls .summary strong{color:#2166ac}
+.variant-label{display:inline-block;font-size:11px;font-weight:600;color:#fff;background:#2166ac;padding:2px 8px;border-radius:4px;margin-left:8px}
+.split{display:flex;gap:0;border:1px solid #eee;border-radius:8px;overflow:hidden;height:520px}
+.split .panel-label{position:absolute;top:8px;left:8px;z-index:1000;font-size:11px;font-weight:600;color:#fff;background:rgba(0,0,0,0.6);padding:2px 8px;border-radius:4px;pointer-events:none}
+.split #sat-panel{flex:1;position:relative}
+.split #sat-map{width:100%;height:100%}
+.split #street-panel{flex:1;display:flex;flex-direction:column;border-left:1px solid #eee;position:relative}
+.spot-info{padding:10px 14px;background:#f5f5f5;font-size:13px;border-bottom:1px solid #eee;min-height:42px}
+.spot-info .highlight{color:#2166ac;font-weight:600}
+#street-frame{flex:1;border:none;background:#f9f9f9}
+.spot-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.spot-btns button{font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;transition:all 0.15s}
+.spot-btns button.active{background:#2166ac;color:#fff;border-color:#2166ac}
+.spot-btns button:hover:not(.active){background:#e8f0fe}
+.sources{font-size:11px;color:#aaa;margin-top:0.8rem;line-height:1.5}
+.temp-label{background:none!important;border:none!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important;color:#fff!important;text-shadow:0 0 4px #000,0 0 4px #000}
+@media(max-width:700px){.split{flex-direction:column;height:auto}.split #sat-panel{height:350px}.split #street-panel{height:300px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Cool Spots Explorer <span class="variant-label">v1: Satellite + Street View</span></h2>
+<p class="subtitle">Satellite view with cool spot pins (left) · Street-level imagery (right)</p>
+<div class="controls">
+  <select id="city-sel"></select>
+  <span class="summary" id="city-summary"></span>
+</div>
+<div class="split">
+  <div id="sat-panel">
+    <div class="panel-label">Satellite</div>
+    <div id="sat-map"></div>
+  </div>
+  <div id="street-panel">
+    <div class="panel-label" style="left:auto;right:8px">Street View</div>
+    <div class="spot-info" id="spot-info">Select a cool spot to explore</div>
+    <iframe id="street-frame" src="about:blank" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+</div>
+<div class="spot-btns" id="spot-cards"></div>
+<div class="sources">Cool spots: locations with mean canopy &ge;20% within 60m, surface temperature below city 25th percentile, residential density &ge;8 dw/ha. Temperature from Landsat 9 (30m). Canopy: Meta/WRI 1m (2020). Street imagery: Google Maps. Satellite: Esri. Unpublished analysis by Dr Thami Croeser, June 2026.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const API_KEY = 'AIzaSyDnIQouT9zmxgk0PjjRtzPZuWkHjy47xzM';
+const CITY_NAMES={
+  lyon:"Lyon, France",paris:"Paris, France",marseille:"Marseille, France",
+  toulouse:"Toulouse, France",nice:"Nice, France",
+  munich:"Munich, Germany",berlin:"Berlin, Germany",london:"London, UK",
+  birmingham:"Birmingham, UK"
+};
+const CITY_ORDER=["munich","lyon","paris","marseille","toulouse","nice",
+  "london","birmingham","berlin"];
+
+let allData={}, satMap, hexLayers=[], selectedIdx=-1, currentCity='';
+const DOT_RADIUS=12;
+
+satMap = L.map('sat-map',{zoomControl:true}).setView([48.14,11.58],12);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  attribution:'Esri',maxZoom:19
+}).addTo(satMap);
+
+fetch('cool-spots-data.json').then(r=>r.json()).then(data=>{
+  allData=data;
+  Object.keys(data).forEach(city=>{
+    if(data[city].spots) data[city].spots=data[city].spots.filter(s=>s.gap<=15);
+  });
+  const sel=document.getElementById('city-sel');
+  CITY_ORDER.forEach(id=>{
+    if(!data[id])return;
+    const opt=document.createElement('option');
+    opt.value=id;
+    opt.textContent=(CITY_NAMES[id]||id)+' ('+data[id].spots.length+')';
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change',function(){loadCity(this.value);});
+  const first=data['munich']&&data['munich'].spots.length>0?'munich':CITY_ORDER[0];
+  sel.value=first;
+  loadCity(first);
+  setTimeout(()=>satMap.invalidateSize(),200);
+});
+
+function loadCity(city){
+  currentCity=city;
+  selectedIdx=-1;
+  hexLayers.forEach(l=>satMap.removeLayer(l));
+  hexLayers=[];
+  const cd=allData[city];
+  if(!cd||cd.spots.length===0){
+    document.getElementById('city-summary').innerHTML='<span style="color:#b2182b">No qualifying cool spots</span>';
+    document.getElementById('spot-cards').innerHTML='';
+    document.getElementById('spot-info').innerHTML='No cool spots meet the criteria';
+    document.getElementById('street-frame').src='about:blank';
+    return;
+  }
+  const spots=cd.spots;
+  const r=cd.hex_radius;
+  const lats=spots.map(s=>s.lat),lons=spots.map(s=>s.lon);
+  const bounds=L.latLngBounds(
+    [Math.min(...lats)-r*3,Math.min(...lons)-r*3],
+    [Math.max(...lats)+r*3,Math.max(...lons)+r*3]
+  );
+  satMap.fitBounds(bounds,{padding:[30,30],maxZoom:14});
+
+  spots.forEach((s,i)=>{
+    const dot=L.circleMarker([s.lat,s.lon],{
+      radius:DOT_RADIUS, fillColor:'#4da6ff', fillOpacity:0.85,
+      color:'#fff', weight:2.5
+    }).addTo(satMap);
+    dot.bindTooltip('−'+s.gap+'°C',{
+      permanent:true,direction:'center',className:'temp-label',offset:[0,0]
+    });
+    dot.on('click',()=>selectSpot(i));
+    hexLayers.push(dot);
+  });
+
+  const gapAvg=(spots.reduce((a,s)=>a+s.gap,0)/spots.length).toFixed(1);
+  document.getElementById('city-summary').innerHTML=
+    '<strong>'+spots.length+'</strong> cool spots · '+gapAvg+'°C cooler on average (city mean: '+cd.mean_lst+'°C)';
+  document.getElementById('spot-cards').innerHTML=spots.slice(0,20).map((s,i)=>
+    '<button onclick="selectSpot('+i+')">−'+s.gap+'°C</button>'
+  ).join('');
+
+  let bestIdx=0;
+  if(city==='munich'){
+    let minDist=Infinity;
+    spots.forEach((s,i)=>{const d=Math.abs(s.lat-48.0734)+Math.abs(s.lon-11.5461);if(d<minDist&&Math.abs(s.gap-4.4)<0.5){minDist=d;bestIdx=i;}});
+  }else{
+    let maxGap=0;
+    spots.forEach((s,i)=>{if(s.gap>maxGap){maxGap=s.gap;bestIdx=i;}});
+  }
+  setTimeout(()=>selectSpot(bestIdx),300);
+}
+
+function selectSpot(idx){
+  selectedIdx=idx;
+  const cd=allData[currentCity];
+  const s=cd.spots[idx];
+  hexLayers.forEach((h,i)=>{
+    if(i===idx){
+      h.setStyle({fillColor:'#E63946',fillOpacity:0.9,color:'#fff',weight:3,radius:DOT_RADIUS+4});
+    }else{
+      h.setStyle({fillColor:'#4da6ff',fillOpacity:0.85,color:'#fff',weight:2.5,radius:DOT_RADIUS});
+    }
+  });
+  satMap.setView([s.lat,s.lon],17);
+  document.getElementById('spot-info').innerHTML=
+    '<strong>'+s.lst+'°C</strong> · <span class="highlight">'+s.gap+'°C cooler</span> on average · '+
+    s.canopy+'% canopy · '+s.dw_ha+' dw/ha';
+  document.getElementById('street-frame').src=
+    'https://www.google.com/maps/embed/v1/streetview?key='+API_KEY+
+    '&location='+s.lat+','+s.lon+'&heading=0&pitch=0&fov=90';
+  document.querySelectorAll('.spot-btns button').forEach((b,i)=>b.classList.toggle('active',i===idx));
+}
+window.selectSpot=selectSpot;
+</script>
+</body>
+</html>

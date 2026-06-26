@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cool & Hot Spots Explorer | Treejectory</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}
+.container{max-width:1000px;margin:0 auto;padding:1rem}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:0.3rem}
+.subtitle{font-size:13px;color:#888;margin-bottom:0.8rem}
+.controls{display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.controls select{padding:8px 12px;font-size:14px;font-weight:600;border:2px solid #E76F00;border-radius:6px;background:#FFF7ED;color:#1a1a1a}
+.controls .summary{font-size:13px;color:#888}
+.mode-toggle{display:flex;border-radius:6px;overflow:hidden;border:2px solid #ddd}
+.mode-toggle button{padding:8px 16px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:#f5f5f5;color:#888}
+.mode-toggle button.active-cool{background:#2166ac;color:#fff;border-color:#2166ac}
+.mode-toggle button.active-hot{background:#b2182b;color:#fff;border-color:#b2182b}
+.split{display:flex;gap:0;border:1px solid #eee;border-radius:8px;overflow:hidden;height:520px}
+.split .panel-label{position:absolute;top:8px;left:8px;z-index:10;font-size:11px;font-weight:600;color:#fff;background:rgba(0,0,0,0.6);padding:2px 8px;border-radius:4px;pointer-events:none}
+.split #oblique-panel{flex:1;position:relative}
+.split #oblique-map{width:100%;height:100%}
+.split #street-panel{flex:1;display:flex;flex-direction:column;border-left:1px solid #eee;position:relative}
+.spot-info{padding:10px 14px;background:#f5f5f5;font-size:13px;border-bottom:1px solid #eee;min-height:42px}
+.spot-info .hl-cool{color:#2166ac;font-weight:600}
+.spot-info .hl-hot{color:#b2182b;font-weight:600}
+#street-frame{flex:1;border:none;background:#f9f9f9}
+.spot-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.spot-btns button{font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;transition:all 0.15s}
+.spot-btns button.active-cool{background:#2166ac;color:#fff;border-color:#2166ac}
+.spot-btns button.active-hot{background:#b2182b;color:#fff;border-color:#b2182b}
+.spot-btns button:hover{background:#f0f0f0}
+.sources{font-size:11px;color:#aaa;margin-top:0.8rem;line-height:1.5}
+@media(max-width:700px){.split{flex-direction:column;height:auto}.split #oblique-panel{height:350px}.split #street-panel{height:300px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Trees Are the Difference</h2>
+<p class="subtitle" id="subtitle">Dense residential areas with adequate tree canopy that stay measurably cooler. Click a dot to see street-level imagery.</p>
+<div class="controls">
+  <div class="mode-toggle">
+    <button id="btn-cool" onclick="setMode('cool')">Cool Spots</button>
+    <button id="btn-hot" onclick="setMode('hot')">Hot Spots</button>
+  </div>
+  <select id="city-sel"></select>
+  <span class="summary" id="city-summary"></span>
+</div>
+<div class="split">
+  <div id="oblique-panel">
+    <div class="panel-label">Satellite (oblique)</div>
+    <div id="oblique-map"></div>
+  </div>
+  <div id="street-panel">
+    <div class="panel-label" style="left:auto;right:8px">Street View</div>
+    <div class="spot-info" id="spot-info">Select a spot to explore</div>
+    <iframe id="street-frame" src="about:blank" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+</div>
+<div class="spot-btns" id="spot-cards"></div>
+<div class="sources" id="sources-text"></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const API_KEY = 'AIzaSyDnIQouT9zmxgk0PjjRtzPZuWkHjy47xzM';
+const CITY_NAMES={
+  lyon:"Lyon, France",paris:"Paris, France",marseille:"Marseille, France",
+  toulouse:"Toulouse, France",nice:"Nice, France",
+  munich:"Munich, Germany",berlin:"Berlin, Germany",london:"London, UK",
+  birmingham:"Birmingham, UK"
+};
+const CITY_ORDER=["munich","paris","london","lyon","marseille","toulouse","nice",
+  "birmingham","berlin"];
+
+const MODES = {
+  cool: {
+    subtitle: "Dense residential areas with adequate tree canopy that stay measurably cooler. Click a dot to see street-level imagery.",
+    sources: 'Cool spots: locations with mean canopy ≥20% within 60m, surface temperature below city 25th percentile, residential density ≥8 dw/ha. Temperature from Landsat 9 (30m). Canopy: Meta/WRI 1m (2020). Street imagery: Google Maps. Satellite: Esri. Unpublished analysis by Dr Thami Croeser, June 2026.',
+    sign: '−',
+    label: 'cooler',
+    hlClass: 'hl-cool',
+    activeClass: 'active-cool',
+    emptyMsg: 'No qualifying cool spots — canopy too low across dense areas',
+    selectMsg: 'Select a cool spot to explore',
+  },
+  hot: {
+    subtitle: "Dense residential areas with very low tree canopy that get dangerously hot. Click a dot to see street-level imagery.",
+    sources: 'Hot spots: locations with mean canopy <10% within 60m, surface temperature above city 75th percentile, residential density ≥8 dw/ha. Temperature from Landsat 9 (30m). Canopy: Meta/WRI 1m (2020). Street imagery: Google Maps. Satellite: Esri. Unpublished analysis by Dr Thami Croeser, June 2026.',
+    sign: '+',
+    label: 'hotter',
+    hlClass: 'hl-hot',
+    activeClass: 'active-hot',
+    emptyMsg: 'No qualifying hot spots in this city',
+    selectMsg: 'Select a hot spot to explore',
+  }
+};
+
+let coolData={}, hotData={}, obliqueMap, markers=[], selectedIdx=-1, currentCity='', currentMode='cool';
+
+obliqueMap = new maplibregl.Map({
+  container:'oblique-map',
+  style:{
+    version:8,
+    sources:{
+      'esri-sat':{
+        type:'raster',
+        tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize:256,
+        attribution:'Esri'
+      }
+    },
+    layers:[{id:'sat',type:'raster',source:'esri-sat'}]
+  },
+  center:[11.58,48.14],
+  zoom:12,
+  pitch:55,
+  bearing:-15,
+  maxPitch:70
+});
+obliqueMap.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-left');
+
+Promise.all([
+  fetch('cool-spots-data.json').then(r=>r.json()),
+  fetch('hot-spots-data.json').then(r=>r.json())
+]).then(([cool, hot])=>{
+  Object.keys(cool).forEach(c=>{if(cool[c].spots) cool[c].spots=cool[c].spots.filter(s=>s.gap<=15);});
+  Object.keys(hot).forEach(c=>{if(hot[c].spots) hot[c].spots=hot[c].spots.filter(s=>s.gap<=15);});
+  coolData=cool;
+  hotData=hot;
+  buildCitySelector();
+  setMode('cool');
+});
+
+function buildCitySelector(){
+  const sel=document.getElementById('city-sel');
+  sel.innerHTML='';
+  const data=currentMode==='cool'?coolData:hotData;
+  CITY_ORDER.forEach(id=>{
+    if(!data[id])return;
+    const opt=document.createElement('option');
+    opt.value=id;
+    opt.textContent=(CITY_NAMES[id]||id)+' ('+data[id].spots.length+')';
+    sel.appendChild(opt);
+  });
+  sel.onchange=function(){loadCity(this.value);};
+}
+
+function setMode(mode){
+  currentMode=mode;
+  const m=MODES[mode];
+  document.getElementById('subtitle').textContent=m.subtitle;
+  document.getElementById('sources-text').innerHTML=m.sources;
+  document.getElementById('spot-info').textContent=m.selectMsg;
+  document.getElementById('btn-cool').className=mode==='cool'?'active-cool':'';
+  document.getElementById('btn-hot').className=mode==='hot'?'active-hot':'';
+  buildCitySelector();
+  const data=mode==='cool'?coolData:hotData;
+  const sel=document.getElementById('city-sel');
+  if(currentCity && data[currentCity] && data[currentCity].spots.length>0){
+    sel.value=currentCity;
+    loadCity(currentCity);
+  } else {
+    const first=CITY_ORDER.find(id=>data[id]&&data[id].spots.length>0)||CITY_ORDER[0];
+    sel.value=first;
+    loadCity(first);
+  }
+}
+window.setMode=setMode;
+
+function coolColor(gap){
+  const t=Math.min(Math.max((gap-1.5)/3,0),1);
+  return 'rgb('+Math.round(100*(1-t)+20*t)+','+Math.round(180*(1-t)+60*t)+','+Math.round(255*(1-t)+180*t)+')';
+}
+function hotColor(gap){
+  const t=Math.min(Math.max((gap-1)/3,0),1);
+  return 'rgb('+Math.round(220*(1-t)+180*t)+','+Math.round(120*(1-t)+30*t)+','+Math.round(60*(1-t)+30*t)+')';
+}
+
+function createMarkerEl(gap, selected){
+  const m=MODES[currentMode];
+  const el=document.createElement('div');
+  el.style.cssText='display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:drop-shadow(2px 4px 4px rgba(0,0,0,0.5));transition:transform 0.15s;transform-origin:bottom center;'+(selected?'transform:scale(1.25);z-index:10;':'');
+  const defaultBg=currentMode==='cool'?coolColor(gap):hotColor(gap);
+  const bg=selected?'#f5c542':defaultBg;
+  const head=document.createElement('div');
+  head.style.cssText='width:30px;height:30px;border-radius:50%;background:'+bg+';border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;';
+  head.textContent=m.sign+gap;
+  const stem=document.createElement('div');
+  stem.style.cssText='width:3px;height:14px;background:linear-gradient(to bottom,#fff,#ccc);border-radius:0 0 1px 1px;';
+  const point=document.createElement('div');
+  point.style.cssText='width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #ccc;';
+  el.appendChild(head);
+  el.appendChild(stem);
+  el.appendChild(point);
+  return el;
+}
+
+function rebuildMarkers(){
+  const data=currentMode==='cool'?coolData:hotData;
+  const cd=data[currentCity];
+  markers.forEach(m=>m.remove());
+  markers=[];
+  cd.spots.forEach((s,i)=>{
+    const el=createMarkerEl(s.gap,i===selectedIdx);
+    el.addEventListener('click',()=>selectSpot(i));
+    const marker=new maplibregl.Marker({element:el,anchor:'bottom'})
+      .setLngLat([s.lon,s.lat])
+      .addTo(obliqueMap);
+    markers.push(marker);
+  });
+}
+
+function loadCity(city){
+  currentCity=city;
+  selectedIdx=-1;
+  markers.forEach(m=>m.remove());
+  markers=[];
+  const m=MODES[currentMode];
+  const data=currentMode==='cool'?coolData:hotData;
+  const cd=data[city];
+
+  if(!cd||cd.spots.length===0){
+    document.getElementById('city-summary').innerHTML='<span style="color:#b2182b">'+m.emptyMsg+'</span>';
+    document.getElementById('spot-cards').innerHTML='';
+    document.getElementById('spot-info').textContent=m.emptyMsg;
+    document.getElementById('street-frame').src='about:blank';
+    return;
+  }
+  const spots=cd.spots;
+  const lats=spots.map(s=>s.lat),lons=spots.map(s=>s.lon);
+  const bounds=new maplibregl.LngLatBounds(
+    [Math.min(...lons)-0.01,Math.min(...lats)-0.01],
+    [Math.max(...lons)+0.01,Math.max(...lats)+0.01]
+  );
+  obliqueMap.fitBounds(bounds,{padding:40,pitch:55,bearing:-15,maxZoom:14});
+
+  spots.forEach((s,i)=>{
+    const el=createMarkerEl(s.gap,false);
+    el.addEventListener('click',()=>selectSpot(i));
+    const marker=new maplibregl.Marker({element:el,anchor:'bottom'})
+      .setLngLat([s.lon,s.lat])
+      .addTo(obliqueMap);
+    markers.push(marker);
+  });
+
+  const gapAvg=(spots.reduce((a,s)=>a+s.gap,0)/spots.length).toFixed(1);
+  const summaryColor=currentMode==='cool'?'#2166ac':'#b2182b';
+  document.getElementById('city-summary').innerHTML=
+    '<strong style="color:'+summaryColor+'">'+spots.length+'</strong> '+
+    (currentMode==='cool'?'cool':'hot')+' spots · '+m.sign+gapAvg+'°C '+m.label+
+    ' on average (city mean: '+cd.mean_lst+'°C)';
+
+  const activeClass=m.activeClass;
+  document.getElementById('spot-cards').innerHTML=spots.slice(0,20).map((s,i)=>
+    '<button onclick="selectSpot('+i+')">'+m.sign+s.gap+'°C</button>'
+  ).join('');
+
+  let bestIdx=0, bestVal=0;
+  spots.forEach((s,i)=>{if(s.gap>bestVal){bestVal=s.gap;bestIdx=i;}});
+  setTimeout(()=>selectSpot(bestIdx),500);
+}
+
+function selectSpot(idx){
+  selectedIdx=idx;
+  const m=MODES[currentMode];
+  const data=currentMode==='cool'?coolData:hotData;
+  const cd=data[currentCity];
+  const s=cd.spots[idx];
+
+  rebuildMarkers();
+
+  obliqueMap.flyTo({center:[s.lon,s.lat],zoom:17,pitch:55,bearing:-15,duration:800});
+
+  document.getElementById('spot-info').innerHTML=
+    '<strong>'+s.lst+'°C</strong> · <span class="'+m.hlClass+'">'+m.sign+s.gap+'°C '+m.label+'</span> than average · '+
+    s.canopy+'% canopy · '+s.dw_ha+' dw/ha';
+  document.getElementById('street-frame').src=
+    'https://www.google.com/maps/embed/v1/streetview?key='+API_KEY+
+    '&location='+s.lat+','+s.lon+'&heading=0&pitch=0&fov=90';
+
+  document.querySelectorAll('.spot-btns button').forEach((b,i)=>
+    b.className=i===idx?m.activeClass:'');
+}
+window.selectSpot=selectSpot;
+</script>
+</body>
+</html>
