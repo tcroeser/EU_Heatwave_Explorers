@@ -126,8 +126,8 @@ Promise.all([
   fetch('cool-spots-data.json').then(r=>r.json()),
   fetch('hot-spots-data.json').then(r=>r.json())
 ]).then(([cool, hot])=>{
-  Object.keys(cool).forEach(c=>{if(cool[c].spots) cool[c].spots=cool[c].spots.filter(s=>s.gap<=15);});
-  Object.keys(hot).forEach(c=>{if(hot[c].spots) hot[c].spots=hot[c].spots.filter(s=>s.gap<=15);});
+  Object.keys(cool).forEach(c=>{if(cool[c].spots) cool[c].spots=cool[c].spots.filter(s=>s.gap<=10);});
+  Object.keys(hot).forEach(c=>{if(hot[c].spots) hot[c].spots=hot[c].spots.filter(s=>s.gap<=10);});
   coolData=cool;
   hotData=hot;
   buildCitySelector();
