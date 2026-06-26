@@ -11,10 +11,10 @@
 <body>
 <div class="container">
 <div class="metrics">
-  <div class="metric"><div class="label">Cities</div><div class="value">21</div></div>
-  <div class="metric"><div class="label">Buildings</div><div class="value">3.8M</div></div>
-  <div class="metric"><div class="label">Best</div><div class="value green">Berlin 80%</div></div>
-  <div class="metric"><div class="label">Worst</div><div class="value red">Sevilla 99.8%</div></div>
+  <div class="metric"><div class="label">Cities</div><div class="value">25</div></div>
+  <div class="metric"><div class="label">Buildings</div><div class="value">5.1M</div></div>
+  <div class="metric"><div class="label">Best in sample</div><div class="value green">Nice 56%</div></div>
+  <div class="metric"><div class="label">Most exposed</div><div class="value red">Sevilla 1%</div></div>
 </div>
 <div class="chart-wrap"><canvas id="stackedChart"></canvas></div>
 <div class="legend">
@@ -30,17 +30,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const cities=[
-{name:"Porto",c:"PT",pct:[72,18,9,1,0]},{name:"Thessaloniki",c:"GR",pct:[68,22,9,1,0]},
-{name:"Sevilla",c:"ES",pct:[70,20,10,0,0]},{name:"Athens",c:"GR",pct:[65,23,10,1,1]},
-{name:"Paris",c:"FR",pct:[60,28,11,1,0]},{name:"Madrid",c:"ES",pct:[58,28,13,1,0]},
-{name:"Lisbon",c:"PT",pct:[57,28,14,1,0]},{name:"Toulouse",c:"FR",pct:[58,29,11,1,1]},
-{name:"Naples",c:"IT",pct:[62,25,11,1,1]},{name:"Rome",c:"IT",pct:[58,26,14,1,1]},
-{name:"Bristol",c:"GB",pct:[52,30,16,1,1]},{name:"Marseille",c:"FR",pct:[55,30,12,2,1]},
-{name:"Barcelona",c:"ES",pct:[56,28,13,2,1]},{name:"Milan",c:"IT",pct:[54,29,13,2,2]},
-{name:"London",c:"GB",pct:[48,30,18,3,1]},{name:"Birmingham",c:"GB",pct:[44,32,19,3,2]},
-{name:"Lyon",c:"FR",pct:[50,33,10,4,3]},{name:"Munich",c:"DE",pct:[35,30,25,7,3]},
-{name:"Cologne",c:"DE",pct:[32,28,28,8,4]},{name:"Nice",c:"FR",pct:[38,28,22,8,4]},
-{name:"Berlin",c:"DE",pct:[28,25,25,13,9]},
+{name:"Sevilla",c:"ES",pct:[75,19,5,1,0]},
+{name:"Athens",c:"GR",pct:[54,33,10,2,1]},
+{name:"Lisbon",c:"PT",pct:[57,28,10,3,2]},
+{name:"Liverpool",c:"GB",pct:[56,27,11,4,2]},
+{name:"Newcastle",c:"GB",pct:[48,35,11,4,2]},
+{name:"Porto",c:"PT",pct:[44,34,16,5,1]},
+{name:"London",c:"GB",pct:[41,37,15,5,2]},
+{name:"Birmingham",c:"GB",pct:[42,37,13,5,3]},
+{name:"Leeds",c:"GB",pct:[45,32,15,5,3]},
+{name:"Rome",c:"IT",pct:[56,25,11,5,3]},
+{name:"Toulouse",c:"FR",pct:[26,42,23,7,2]},
+{name:"Bristol",c:"GB",pct:[33,38,18,7,4]},
+{name:"Madrid",c:"ES",pct:[33,32,21,10,4]},
+{name:"Naples",c:"IT",pct:[30,33,23,9,5]},
+{name:"Marseille",c:"FR",pct:[30,33,21,10,6]},
+{name:"Thessaloniki",c:"GR",pct:[19,40,25,11,5]},
+{name:"Paris",c:"FR",pct:[23,35,24,12,6]},
+{name:"Berlin",c:"DE",pct:[19,36,25,11,9]},
+{name:"Lyon",c:"FR",pct:[17,29,29,16,9]},
+{name:"Munich",c:"DE",pct:[10,29,34,18,9]},
+{name:"Barcelona",c:"ES",pct:[16,27,27,17,13]},
+{name:"Milan",c:"IT",pct:[15,25,24,17,19]},
+{name:"Hamburg",c:"DE",pct:[9,19,27,24,21]},
+{name:"Cologne",c:"DE",pct:[8,18,28,24,22]},
+{name:"Nice",c:"FR",pct:[10,15,19,21,35]},
 ];
 cities.sort((a,b)=>(b.pct[0]+b.pct[1]+b.pct[2])-(a.pct[0]+a.pct[1]+a.pct[2]));
 const labels=cities.map(c=>c.name);

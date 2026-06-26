@@ -3,18 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>21-City Canopy Ranking | Treejectory</title>
+<title>25-City Canopy Ranking | Treejectory</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}.container{max-width:800px;margin:0 auto;padding:1.5rem}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}.metric{background:#f5f5f5;border-radius:8px;padding:1rem}.metric .label{font-size:13px;color:#888}.metric .value{font-size:22px;font-weight:600}.metric .value.green{color:#2D6A4F}.metric .value.red{color:#c85a5a}.controls{display:flex;gap:12px;align-items:center;margin-bottom:1rem}.controls label{font-size:14px;color:#666}.controls select{padding:6px 10px;font-size:13px;border:1px solid #ddd;border-radius:6px}.card{background:#f5f5f5;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem}.card .name{font-size:18px;font-weight:600}.card .country{font-size:14px;color:#888;margin-left:8px}.card .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-top:12px}.card .stat{background:#fff;border-radius:6px;padding:10px}.card .stat .sl{font-size:12px;color:#888}.card .stat .sv{font-size:20px;font-weight:600}.bar-wrap{margin-top:12px}.bar-label{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:4px}.bar-bg{height:20px;background:#eee;border-radius:6px;overflow:hidden;position:relative}.bar-fill{height:100%;border-radius:6px;transition:width 0.4s}.bar-line{position:absolute;left:60%;top:0;height:100%;width:2px;background:#c85a5a;opacity:0.6}.verdict{margin-top:10px;font-size:13px;line-height:1.5}.chart-wrap{position:relative;width:100%;height:580px;margin-bottom:1rem}.legend{display:flex;gap:16px;font-size:12px;color:#888;margin-bottom:8px}.legend span{display:flex;align-items:center;gap:4px}.legend .dot{width:10px;height:10px;border-radius:2px}.sources{font-size:12px;color:#aaa;background:#f5f5f5;border-radius:8px;padding:1rem;line-height:1.6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;background:#fff}
+.container{max-width:860px;margin:0 auto;padding:1.5rem}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}
+.metric{background:#f5f5f5;border-radius:8px;padding:1rem}
+.metric .label{font-size:13px;color:#888}
+.metric .value{font-size:22px;font-weight:600}
+.metric .value.green{color:#2D6A4F}
+.metric .value.red{color:#c85a5a}
+.controls{display:flex;gap:12px;align-items:center;margin-bottom:1rem}
+.controls label{font-size:14px;color:#666}
+.controls select{padding:6px 10px;font-size:13px;border:1px solid #ddd;border-radius:6px}
+.card{background:#f5f5f5;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem}
+.card .name{font-size:18px;font-weight:600}
+.card .country{font-size:14px;color:#888;margin-left:8px}
+.card .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-top:12px}
+.card .stat{background:#fff;border-radius:6px;padding:10px}
+.card .stat .sl{font-size:12px;color:#888}
+.card .stat .sv{font-size:20px;font-weight:600}
+.verdict{margin-top:12px;font-size:13px;line-height:1.5}
+.chart-wrap{position:relative;width:100%;height:460px;margin-bottom:1rem}
+.legend{display:flex;gap:16px;font-size:12px;color:#888;margin-bottom:8px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:2px}
+.sources{font-size:12px;color:#aaa;background:#f5f5f5;border-radius:8px;padding:1rem;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="container">
 <div class="metrics">
-  <div class="metric"><div class="label">Cities</div><div class="value">21</div></div>
+  <div class="metric"><div class="label">Cities</div><div class="value">25</div></div>
   <div class="metric"><div class="label">Countries</div><div class="value">7</div></div>
-  <div class="metric"><div class="label">Most canopy</div><div class="value green">Berlin 80%</div></div>
-  <div class="metric"><div class="label">Most exposed</div><div class="value red">Sevilla 99.8%</div></div>
+  <div class="metric"><div class="label">Best in sample</div><div class="value green">Nice 56%</div></div>
+  <div class="metric"><div class="label">Most exposed</div><div class="value red">Sevilla 1.3%</div></div>
 </div>
 <div class="controls">
   <label>Select city</label>
@@ -23,47 +47,159 @@
 <div class="card" id="city-card">
   <span id="cc-name" class="name"></span><span id="cc-country" class="country"></span>
   <div class="stats">
-    <div class="stat"><div class="sl">Below 30%</div><div class="sv" id="cc-pct"></div></div>
+    <div class="stat"><div class="sl">Adequately protected</div><div class="sv" id="cc-good"></div></div>
+    <div class="stat"><div class="sl">Below threshold</div><div class="sv" id="cc-bad"></div></div>
     <div class="stat"><div class="sl">Buildings</div><div class="sv" id="cc-bld"></div></div>
     <div class="stat"><div class="sl">Rank</div><div class="sv" id="cc-rank"></div></div>
-  </div>
-  <div class="bar-wrap">
-    <div class="bar-label"><span>0%</span><span>30% threshold</span><span>50%</span></div>
-    <div class="bar-bg"><div class="bar-fill" id="cc-bar"></div><div class="bar-line"></div></div>
   </div>
   <div class="verdict" id="cc-verdict"></div>
 </div>
 <div class="chart-wrap"><canvas id="rankChart"></canvas></div>
 <div class="legend">
-  <span><span class="dot" style="background:#2D6A4F"></span>Selected</span>
-  <span><span class="dot" style="background:#b0b0b0"></span>Other cities</span>
-  <span><span style="width:2px;height:10px;background:#c85a5a"></span>30% threshold</span>
+  <span><span class="dot" style="background:#2D6A4F"></span>Selected city</span>
+  <span><span class="dot" style="background:linear-gradient(to right, #E88030, #8B0000);width:40px"></span>% of buildings with adequate canopy (darker = worse)</span>
 </div>
-<div class="sources">Canopy ≥3m (Meta/WRI 2020, 1m). Buildings: BD TOPO (FR), Overture Maps (others). Unpublished analysis by Dr Thami Croeser, June 2026.</div>
+<div class="sources">Adequate protection = 30%+ tree canopy within 60m. Canopy: Meta/WRI 0.2m (2020), with 1m hybrid fill where 0.2m coverage is incomplete. Buildings: BD TOPO (FR), Overture Maps (others). Unpublished analysis by Dr Thami Croeser, June 2026.</div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const cities=[
-{name:"Sevilla",c:"ES",bld:62940,pct:99.8},{name:"Porto",c:"PT",bld:45274,pct:99.3},
-{name:"Athens",c:"GR",bld:67825,pct:99.1},{name:"Thessaloniki",c:"GR",bld:26858,pct:99.1},
-{name:"Paris",c:"FR",bld:109578,pct:98.5},{name:"Madrid",c:"ES",bld:159773,pct:98.7},
-{name:"Lisbon",c:"PT",bld:58785,pct:98.7},{name:"Toulouse",c:"FR",bld:136447,pct:98.3},
-{name:"Naples",c:"IT",bld:59034,pct:97.9},{name:"Rome",c:"IT",bld:239207,pct:97.6},
-{name:"Bristol",c:"GB",bld:188988,pct:97.5},{name:"Marseille",c:"FR",bld:255018,pct:97.2},
-{name:"Barcelona",c:"ES",bld:74957,pct:97.1},{name:"Milan",c:"IT",bld:68631,pct:96.2},
-{name:"London",c:"GB",bld:1545577,pct:96.0},{name:"Birmingham",c:"GB",bld:282088,pct:95.1},
-{name:"Lyon",c:"FR",bld:45308,pct:93.9},{name:"Munich",c:"DE",bld:200191,pct:90.4},
-{name:"Nice",c:"FR",bld:53450,pct:88.2},{name:"Cologne",c:"DE",bld:322172,pct:88.5},
-{name:"Berlin",c:"DE",bld:575524,pct:80.0}
+{name:"Nice",c:"FR",bld:53858,pct:44.3},
+{name:"Cologne",c:"DE",bld:322172,pct:54.3},
+{name:"Hamburg",c:"DE",bld:384724,pct:55.6},
+{name:"Milan",c:"IT",bld:68631,pct:64.3},
+{name:"Barcelona",c:"ES",bld:74957,pct:69.3},
+{name:"Munich",c:"DE",bld:200191,pct:72.8},
+{name:"Lyon",c:"FR",bld:46246,pct:75.1},
+{name:"Berlin",c:"DE",bld:575524,pct:80.0},
+{name:"Paris",c:"FR",bld:118646,pct:82.0},
+{name:"Thessaloniki",c:"GR",bld:26858,pct:83.6},
+{name:"Marseille",c:"FR",bld:256397,pct:84.2},
+{name:"Naples",c:"IT",bld:59034,pct:85.1},
+{name:"Madrid",c:"ES",bld:159773,pct:85.7},
+{name:"Bristol",c:"GB",bld:188988,pct:89.5},
+{name:"Toulouse",c:"FR",bld:137966,pct:90.6},
+{name:"Leeds",c:"GB",bld:328493,pct:91.8},
+{name:"Birmingham",c:"GB",bld:282088,pct:92.1},
+{name:"Rome",c:"IT",bld:239207,pct:92.2},
+{name:"London",c:"GB",bld:1545577,pct:92.8},
+{name:"Liverpool",c:"GB",bld:136605,pct:93.5},
+{name:"Porto",c:"PT",bld:45274,pct:93.7},
+{name:"Newcastle",c:"GB",bld:73969,pct:94.5},
+{name:"Lisbon",c:"PT",bld:58785,pct:95.7},
+{name:"Athens",c:"GR",bld:67825,pct:96.3},
+{name:"Sevilla",c:"ES",bld:62940,pct:98.7}
 ];
-cities.sort((a,b)=>b.pct-a.pct);
+// Sorted by % protected (descending = best first)
 const cn={FR:"France",ES:"Spain",IT:"Italy",DE:"Germany",PT:"Portugal",GR:"Greece",GB:"United Kingdom"};
-const sel=document.getElementById('city-select');
-cities.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.name+' ('+c.c+')';sel.appendChild(o);});
-const chart=new Chart(document.getElementById('rankChart'),{type:'bar',data:{labels:cities.map(c=>c.name),datasets:[{data:cities.map(c=>c.pct),backgroundColor:cities.map(()=>'#b0b0b0'),borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const c=cities[ctx.dataIndex];return c.pct+'% | '+c.bld.toLocaleString()+' buildings | '+cn[c.c]}}}},scales:{x:{min:0,max:100,title:{display:true,text:'Buildings below 30% canopy threshold (%)'}},y:{ticks:{font:{size:11}}}}}});
-function pick(idx){const c=cities[idx];document.getElementById('cc-name').textContent=c.name;document.getElementById('cc-country').textContent=cn[c.c];document.getElementById('cc-pct').textContent=c.pct+'%';document.getElementById('cc-pct').style.color=c.pct>=95?'#c85a5a':c.pct>=90?'#e9a820':'#2D6A4F';document.getElementById('cc-bld').textContent=c.bld.toLocaleString();document.getElementById('cc-rank').textContent='#'+(idx+1)+'/21';const bar=document.getElementById('cc-bar');bar.style.width=Math.min(c.pct/50*100,100)+'%';bar.style.background=c.pct>=95?'#c85a5a':c.pct>=90?'#e9a820':'#2D6A4F';let v='';if(c.pct>=95)v='<strong>'+c.name+' has critically low canopy protection.</strong> '+c.pct+'% of buildings fall below the 30% threshold needed for effective heatwave cooling.';else if(c.pct>=85)v='<strong>'+c.name+' falls well short</strong> at '+c.pct+'%. Better than most, but still '+Math.round(c.bld*c.pct/100).toLocaleString()+' buildings exposed.';else v='<strong>'+c.name+' performs best in Europe</strong> at '+c.pct+'% — but that\'s still '+Math.round(c.bld*c.pct/100).toLocaleString()+' buildings.';document.getElementById('cc-verdict').innerHTML=v;chart.data.datasets[0].backgroundColor=cities.map((_,i)=>i===idx?'#2D6A4F':'#b0b0b0');chart.update('none');sel.value=idx;}
-sel.addEventListener('change',()=>pick(parseInt(sel.value)));
-chart.options.onClick=(e)=>{const pts=chart.getElementsAtEventForMode(e,'nearest',{intersect:true},true);if(pts.length)pick(pts[0].index);};
+
+// % adequately protected
+const protected_pct = cities.map(c => +(100 - c.pct).toFixed(1));
+
+// Gradient: orange (less bad) to dark red (worst)
+function barColor(pctProtected) {
+  const t = Math.max(0, Math.min(1, pctProtected / 60));
+  const r = Math.round(232 * t + 139 * (1-t));
+  const g = Math.round(128 * t + 0 * (1-t));
+  const b = Math.round(48 * t + 0 * (1-t));
+  return `rgb(${r},${g},${b})`;
+}
+
+const barColors = protected_pct.map(p => barColor(p));
+
+const sel = document.getElementById('city-select');
+cities.forEach((c, i) => {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = c.name + ' (' + c.c + ')';
+  sel.appendChild(o);
+});
+
+const chart = new Chart(document.getElementById('rankChart'), {
+  type: 'bar',
+  data: {
+    labels: cities.map(c => c.name),
+    datasets: [{
+      data: protected_pct,
+      backgroundColor: barColors,
+      borderWidth: 0,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    indexAxis: 'x',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {display: false},
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const c = cities[ctx.dataIndex];
+            const good = (100 - c.pct).toFixed(1);
+            return good + '% protected | ' + c.bld.toLocaleString() + ' buildings | ' + cn[c.c];
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        min: 0,
+        max: 60,
+        title: {display: true, text: 'Buildings with adequate canopy (%)'},
+        ticks: {callback: v => v + '%'}
+      },
+      x: {
+        ticks: {
+          font: {size: 10},
+          maxRotation: 55,
+          minRotation: 45
+        }
+      }
+    }
+  }
+});
+
+function pick(idx) {
+  const c = cities[idx];
+  const good = (100 - c.pct).toFixed(1);
+  document.getElementById('cc-name').textContent = c.name;
+  document.getElementById('cc-country').textContent = cn[c.c];
+
+  const goodEl = document.getElementById('cc-good');
+  goodEl.textContent = good + '%';
+  goodEl.style.color = good >= 30 ? '#2D6A4F' : good >= 15 ? '#e9a820' : '#c85a5a';
+
+  const badEl = document.getElementById('cc-bad');
+  badEl.textContent = c.pct + '%';
+  badEl.style.color = c.pct >= 85 ? '#c85a5a' : c.pct >= 60 ? '#e9a820' : '#2D6A4F';
+
+  document.getElementById('cc-bld').textContent = c.bld.toLocaleString();
+  document.getElementById('cc-rank').textContent = '#' + (idx + 1) + '/25';
+
+  let v = '';
+  const exposed = Math.round(c.bld * c.pct / 100).toLocaleString();
+  if (c.pct <= 60)
+    v = '<strong>' + c.name + ' leads our sample</strong> with ' + good + '% of buildings adequately protected — but ' + exposed + ' buildings are still exposed.';
+  else if (c.pct <= 85)
+    v = '<strong>' + c.name + ' falls well short</strong> — only ' + good + '% of buildings have adequate canopy. ' + exposed + ' buildings are exposed.';
+  else
+    v = '<strong>' + c.name + ' has critically low canopy protection.</strong> Just ' + good + '% of buildings meet the 30% threshold. ' + exposed + ' buildings are exposed.';
+  document.getElementById('cc-verdict').innerHTML = v;
+
+  // Highlight selected bar
+  chart.data.datasets[0].backgroundColor = cities.map((_, i) =>
+    i === idx ? '#2D6A4F' : barColors[i]
+  );
+  chart.update('none');
+  sel.value = idx;
+}
+
+sel.addEventListener('change', () => pick(parseInt(sel.value)));
+chart.options.onClick = (e) => {
+  const pts = chart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, true);
+  if (pts.length) pick(pts[0].index);
+};
 pick(0);
 </script>
 </body>
